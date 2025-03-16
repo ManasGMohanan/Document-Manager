@@ -1,12 +1,17 @@
 import 'dart:io';
+import 'package:document_manager/core/common_widgets/section_header_widget.dart';
+import 'package:document_manager/core/common_widgets/textfield_widget.dart';
 import 'package:document_manager/core/utils/app_methods/app_methods.dart';
+import 'package:document_manager/core/utils/constants/colors.dart';
+import 'package:document_manager/core/utils/constants/default_category.dart';
+import 'package:document_manager/core/utils/constants/text_strings.dart';
 import 'package:document_manager/core/utils/document_media/document_media.dart';
 import 'package:document_manager/features/documents/presentation/bloc/document/document_bloc.dart';
 import 'package:document_manager/features/documents/presentation/pages/add_document/widgets/document_file_selection.dart';
+import 'package:document_manager/features/documents/presentation/pages/view_edit_document/widgets/expiry_date_picker.dart';
 import 'package:document_manager/features/documents/presentation/widgets/category_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 
 class AddDocumentScreen extends StatefulWidget {
   const AddDocumentScreen({super.key});
@@ -23,9 +28,27 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
   File? _selectedFile;
   DateTime? _expiryDate;
   String? _selectedCategoryId;
+  bool _isFormValid = false;
 
   // Use DocumentMediaUtils for media operations
   final DocumentMediaUtils _mediaUtils = DocumentMediaUtils();
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController.addListener(_validateForm);
+    _descriptionController.addListener(_validateForm);
+  }
+
+  void _validateForm() {
+    setState(() {
+      _isFormValid = _titleController.text.isNotEmpty &&
+          _descriptionController.text.isNotEmpty &&
+          _selectedFile != null;
+      //optional
+      // _selectedCategoryId != null;
+    });
+  }
 
   @override
   void dispose() {
@@ -39,6 +62,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
     if (file != null) {
       setState(() {
         _selectedFile = file;
+        _validateForm();
       });
     }
   }
@@ -48,6 +72,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
     if (image != null) {
       setState(() {
         _selectedFile = image;
+        _validateForm();
       });
     }
   }
@@ -57,62 +82,47 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
     if (video != null) {
       setState(() {
         _selectedFile = video;
+        _validateForm();
       });
     }
   }
 
   Future<void> _startRecording() async {
     await _mediaUtils.startRecording((error) {
-      DMAppMethods.showSnackBar(context, Text(error), Colors.red);
+      DMAppMethods.showSnackBar(context, Text(error), DMColors.error);
     });
     setState(() {});
   }
 
   Future<void> _stopRecording() async {
     final audioFile = await _mediaUtils.stopRecording((error) {
-      DMAppMethods.showSnackBar(context, Text(error), Colors.red);
+      DMAppMethods.showSnackBar(context, Text(error), DMColors.error);
     });
     setState(() {
       if (audioFile != null) {
         _selectedFile = audioFile;
+        _validateForm();
       }
     });
-  }
-
-  Future<void> _selectExpiryDate() async {
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: _expiryDate ?? DateTime.now().add(const Duration(days: 365)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 3650)),
-    );
-
-    if (pickedDate != null) {
-      setState(() {
-        _expiryDate = pickedDate;
-      });
-    }
   }
 
   Future<void> _saveDocument() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedFile == null) {
-        DMAppMethods.showSnackBar(context, 'Please select a file', Colors.red);
+        DMAppMethods.showSnackBar(
+            context, const Text('Please select a file'), DMColors.error);
         return;
       }
 
-      if (_selectedCategoryId == null) {
-        DMAppMethods.showSnackBar(
-            context, 'Please select or create a category', Colors.red);
-        return;
-      }
+      //If no category is selected, default to "Uncategorized"
+      final categoryId = _selectedCategoryId ?? defaultCategoryId;
 
       context.read<DocumentBloc>().add(
             AddDocument(
               title: _titleController.text,
               description: _descriptionController.text,
               file: _selectedFile!,
-              categoryId: _selectedCategoryId!,
+              categoryId: categoryId,
               expiryDate: _expiryDate,
             ),
           );
@@ -122,136 +132,214 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Document'),
+        title: const Text(DMTexts.addDocAppBar),
+        centerTitle: true,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            onPressed: () {
+              _showHelpDialog(context);
+            },
+          ),
+        ],
       ),
       body: BlocBuilder<DocumentBloc, DocumentState>(
         builder: (context, state) {
           final isLoading = state is DocumentOperationInProgress;
 
           return isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Document Information',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _titleController,
-                          decoration: const InputDecoration(
-                            labelText: 'Title',
-                            hintText: 'Enter document title',
-                            prefixIcon: Icon(Icons.title),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter a title';
-                            }
-                            if (!RegExp(r'^[a-zA-Z0-9\s\-_\.]+$')
-                                .hasMatch(value)) {
-                              return 'Title can only contain letters, numbers, spaces, and basic punctuation';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _descriptionController,
-                          decoration: const InputDecoration(
-                            labelText: 'Description',
-                            hintText: 'Enter document description',
-                            prefixIcon: Icon(Icons.description),
-                          ),
-                          maxLines: 3,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter a description';
-                            }
-                            return null;
-                          },
-                        ),
-                        DocumentFileSelection(
-                          selectedFile: _selectedFile,
-                          mediaUtils: _mediaUtils,
-                          onPickFile: _pickFile,
-                          onCaptureImage: _captureImage,
-                          onRecordVideo: _recordVideo,
-                          onStartRecording: _startRecording,
-                          onStopRecording: _stopRecording,
-                          onRemoveFile: () {
-                            setState(() {
-                              _selectedFile = null;
-                            });
-                          },
-                        ),
-                        Text(
-                          'Additional Information',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 16),
-                        CategorySelector(
-                          selectedCategoryId: _selectedCategoryId,
-                          onCategorySelected: (categoryId) {
-                            setState(() {
-                              _selectedCategoryId = categoryId;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        InkWell(
-                          onTap: _selectExpiryDate,
-                          child: InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'Expiry Date (Optional)',
-                              hintText: 'Select expiry date',
-                              prefixIcon: Icon(Icons.calendar_today),
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 16),
+                      Text(
+                        DMTexts.savingDoc,
+                        style: theme.textTheme.titleMedium,
+                      ),
+                    ],
+                  ),
+                )
+              : SafeArea(
+                  child: GestureDetector(
+                    onTap: () => FocusScope.of(context).unfocus(),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SectionHeader(
+                              title: 'Document Information',
+                              icon: Icons.article_outlined,
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  _expiryDate != null
-                                      ? DateFormat('MMM dd, yyyy')
-                                          .format(_expiryDate!)
-                                      : 'No expiry date',
-                                ),
-                                if (_expiryDate != null)
-                                  IconButton(
-                                    icon: const Icon(Icons.close),
-                                    onPressed: () {
-                                      setState(() {
-                                        _expiryDate = null;
-                                      });
-                                    },
-                                  ),
-                              ],
+                            const SizedBox(height: 20),
+                            // Title text field
+                            CustomTextField(
+                              controller: _titleController,
+                              labelText: 'Title*',
+                              hintText: 'Enter document title',
+                              prefixIcon: Icons.title,
+                              fieldType: FieldType.title,
+                              characterLimit: 20,
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _saveDocument,
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
+
+                            const SizedBox(height: 16),
+
+                            // Description text field
+                            CustomTextField(
+                              controller: _descriptionController,
+                              labelText: 'Description*',
+                              hintText: 'Enter document description',
+                              prefixIcon: Icons.description,
+                              maxLines: 3,
+                              fieldType: FieldType.description,
+                              characterLimit: 100,
                             ),
-                            child: const Text('Save Document'),
-                          ),
+
+                            const SizedBox(height: 24),
+                            DocumentFileSelection(
+                              selectedFile: _selectedFile,
+                              mediaUtils: _mediaUtils,
+                              onPickFile: _pickFile,
+                              onCaptureImage: _captureImage,
+                              onRecordVideo: _recordVideo,
+                              onStartRecording: _startRecording,
+                              onStopRecording: _stopRecording,
+                              onRemoveFile: () {
+                                setState(() {
+                                  _selectedFile = null;
+                                  _validateForm();
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 24),
+                            SectionHeader(
+                              title: 'Additional Information (optional)',
+                              icon: Icons.info_outline,
+                            ),
+                            const SizedBox(height: 20),
+                            _buildCategorySection(context),
+                            const SizedBox(height: 16),
+                            ExpiryDatePicker(
+                              expiryDate: _expiryDate,
+                              onDateChanged: (date) {
+                                setState(() {
+                                  _expiryDate = date;
+                                });
+                              },
+                              labelText: 'Expiry Date',
+                              useBoxDecoration: true,
+                            ),
+                            const SizedBox(height: 40),
+                            _buildSaveButton(context, colorScheme),
+                            const SizedBox(height: 20),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 );
         },
+      ),
+    );
+  }
+
+  Widget _buildCategorySection(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 12),
+          CategorySelector(
+            selectedCategoryId: _selectedCategoryId,
+            onCategorySelected: (categoryId) {
+              setState(() {
+                _selectedCategoryId = categoryId;
+                _validateForm();
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSaveButton(BuildContext context, ColorScheme colorScheme) {
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: ElevatedButton(
+        onPressed: _isFormValid ? _saveDocument : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: colorScheme.primary,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: Colors.grey.shade300,
+          disabledForegroundColor: Colors.grey.shade600,
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.save),
+            const SizedBox(width: 12),
+            Text(
+              'Save Document',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showHelpDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Adding a Document'),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(DMTexts.point1),
+              SizedBox(height: 8),
+              Text(DMTexts.point2),
+              SizedBox(height: 8),
+              Text(DMTexts.point3),
+              SizedBox(height: 8),
+              Text(DMTexts.point4),
+              SizedBox(height: 8),
+              Text(DMTexts.point5),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(DMTexts.gotIT),
+          ),
+        ],
       ),
     );
   }

@@ -1,8 +1,13 @@
+// ignore_for_file: deprecated_member_use
+
+import 'package:document_manager/core/utils/app_methods/app_methods.dart';
+import 'package:document_manager/core/utils/constants/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path/path.dart' as path;
 
+//used for both pdf and excel, pdf page no also
 class PdfExcelViewer extends StatefulWidget {
   final String filePath;
   final String title;
@@ -28,31 +33,13 @@ class _PdfExcelViewerState extends State<PdfExcelViewer> {
 
     if (extension == '.pdf') {
       return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.title),
-          actions: [
-            if (_isReady)
-              Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: Center(
-                  child: Text(
-                    'Page ${_currentPage + 1} of $_totalPages',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
         body: Stack(
           children: [
             PDFView(
               filePath: widget.filePath,
               enableSwipe: true,
               swipeHorizontal: false,
-              autoSpacing: true,
+              autoSpacing: false,
               pageFling: true,
               pageSnap: true,
               defaultPage: 0,
@@ -64,29 +51,18 @@ class _PdfExcelViewerState extends State<PdfExcelViewer> {
                   _isReady = true;
                 });
               },
-              onViewCreated: (PDFViewController controller) {
-                // You can store the controller for future use if needed
-              },
               onPageChanged: (page, total) {
                 setState(() {
                   _currentPage = page!;
                 });
               },
               onError: (error) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error: $error'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+                DMAppMethods.showSnackBar(
+                    context, 'Error: $error', DMColors.error);
               },
               onPageError: (page, error) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error on page $page: $error'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+                DMAppMethods.showSnackBar(
+                    context, 'Error: $error', DMColors.error);
               },
             ),
             if (_isReady)
@@ -111,6 +87,7 @@ class _PdfExcelViewerState extends State<PdfExcelViewer> {
                           'Page ${_currentPage + 1} of $_totalPages',
                           style: const TextStyle(
                             color: Colors.white,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -123,41 +100,78 @@ class _PdfExcelViewerState extends State<PdfExcelViewer> {
         ),
       );
     } else {
-      // Excel viewer (unchanged)
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.title),
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.table_chart,
-                size: 80,
-                color: Colors.green,
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Excel Document',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 10),
-              Text(
-                path.basename(widget.filePath),
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              const SizedBox(height: 40),
-              ElevatedButton.icon(
-                onPressed: () {
-                  OpenFile.open(widget.filePath);
-                },
-                icon: const Icon(Icons.open_in_new),
-                label: const Text('Open in External App'),
-              ),
-            ],
+      // Excel viewer externl
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.table_chart,
+              size: 64,
+              color: Colors.green,
+            ),
           ),
-        ),
+          const SizedBox(height: 24),
+          Text(
+            'Excel Document',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            path.basename(widget.filePath),
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.blue.withOpacity(0.2),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 18,
+                  color: Colors.blue.shade700,
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    'Excel files need to be opened in a spreadsheet app',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.blue.shade700,
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton.icon(
+            onPressed: () {
+              OpenFile.open(widget.filePath);
+            },
+            icon: const Icon(Icons.open_in_new),
+            label: const Text('Open in External App'),
+          ),
+        ],
       );
     }
   }

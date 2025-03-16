@@ -1,8 +1,12 @@
+// ignore_for_file: deprecated_member_use
 import 'package:document_manager/core/utils/app_methods/app_methods.dart';
+import 'package:document_manager/core/utils/constants/colors.dart';
 import 'package:document_manager/features/documents/presentation/bloc/category/category_bloc.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+//Selecting category, icons and colors in
 class CategorySelector extends StatefulWidget {
   final String? selectedCategoryId;
   final Function(String) onCategorySelected;
@@ -25,11 +29,6 @@ class _CategorySelectorState extends State<CategorySelector> {
   IconData _selectedIcon = Icons.folder;
 
   final List<Color> _availableColors = [
-    Colors.red,
-    Colors.pink,
-    Colors.purple,
-    Colors.deepPurple,
-    Colors.indigo,
     Colors.blue,
     Colors.lightBlue,
     Colors.cyan,
@@ -37,6 +36,11 @@ class _CategorySelectorState extends State<CategorySelector> {
     Colors.green,
     Colors.lightGreen,
     Colors.lime,
+    Colors.red,
+    Colors.pink,
+    Colors.purple,
+    Colors.deepPurple,
+    Colors.indigo,
     Colors.yellow,
     Colors.amber,
     Colors.orange,
@@ -48,20 +52,7 @@ class _CategorySelectorState extends State<CategorySelector> {
 
   final List<IconData> _availableIcons = [
     Icons.folder,
-    Icons.description,
-    Icons.picture_as_pdf,
-    Icons.image,
-    Icons.video_library,
-    Icons.audiotrack,
-    Icons.article,
-    Icons.attach_file,
-    Icons.book,
-    Icons.receipt,
-    Icons.assignment,
-    Icons.sticky_note_2,
-    Icons.note,
-    Icons.text_snippet,
-    Icons.inventory,
+    Icons.person,
     Icons.work,
     Icons.school,
     Icons.medical_services,
@@ -71,6 +62,21 @@ class _CategorySelectorState extends State<CategorySelector> {
     Icons.shopping_bag,
     Icons.credit_card,
     Icons.account_balance,
+    Icons.child_care,
+    Icons.description,
+    Icons.article,
+    Icons.attach_file,
+    Icons.book,
+    Icons.receipt,
+    Icons.assignment,
+    Icons.sticky_note_2,
+    Icons.note,
+    Icons.text_snippet,
+    Icons.inventory,
+    Icons.picture_as_pdf,
+    Icons.image,
+    Icons.video_library,
+    Icons.audiotrack,
   ];
 
   @override
@@ -88,7 +94,7 @@ class _CategorySelectorState extends State<CategorySelector> {
   void _addCategory() {
     if (_categoryNameController.text.trim().isEmpty) {
       DMAppMethods.showSnackBar(
-          context, 'Please enter a category name', Colors.red);
+          context, 'Please enter a category name', DMColors.error);
       return;
     }
 
@@ -133,10 +139,13 @@ class _CategorySelectorState extends State<CategorySelector> {
                   prefixIcon: Icon(Icons.category),
                 ),
                 child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
+                  child: DropdownButton2<String>(
                     value: _selectedCategoryId,
                     isExpanded: true,
-                    hint: const Text('Select a category'),
+                    hint: const Text(
+                      'Select a category',
+                      style: TextStyle(fontSize: 14),
+                    ),
                     onChanged: (value) {
                       setState(() {
                         _selectedCategoryId = value;
@@ -145,26 +154,47 @@ class _CategorySelectorState extends State<CategorySelector> {
                         widget.onCategorySelected(value);
                       }
                     },
-                    items: [
-                      ...categories.map((category) => DropdownMenuItem<String>(
-                            value: category.id,
-                            child: Row(
-                              children: [
-                                Icon(
-                                  category.icon,
-                                  color: category.color,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(category.name),
-                              ],
-                            ),
-                          )),
-                    ],
+                    items: categories
+                        .map((category) => DropdownMenuItem<String>(
+                              value: category.id,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    category.icon,
+                                    color: category.color,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    // User may try to create a long category
+                                    child: Text(
+                                      category.name,
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ))
+                        .toList(),
+                    dropdownStyleData: DropdownStyleData(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(
+                            12), // Rounded corners for dropdown
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 6,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              // const SizedBox(height: 5),
               TextButton.icon(
                 onPressed: () {
                   setState(() {
@@ -172,14 +202,19 @@ class _CategorySelectorState extends State<CategorySelector> {
                   });
                 },
                 icon: const Icon(Icons.add),
-                label: const Text('Create New Category'),
+                label: const Text(
+                  'Create New Category',
+                  style: TextStyle(fontSize: 12),
+                ),
               ),
             ] else ...[
               // Add new category form
               TextFormField(
                 controller: _categoryNameController,
+                maxLength: 15,
                 decoration: const InputDecoration(
                   labelText: 'Category Name',
+                  labelStyle: TextStyle(fontSize: 14),
                   hintText: 'Enter category name',
                   prefixIcon: Icon(Icons.edit),
                 ),
@@ -207,7 +242,7 @@ class _CategorySelectorState extends State<CategorySelector> {
                         },
                         child: CircleAvatar(
                           backgroundColor: color,
-                          radius: 20,
+                          radius: 18,
                           child: _selectedColor == color
                               ? const Icon(Icons.check, color: Colors.white)
                               : null,
@@ -265,12 +300,18 @@ class _CategorySelectorState extends State<CategorySelector> {
                         _isAddingCategory = false;
                       });
                     },
-                    child: const Text('Cancel'),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(fontSize: 12),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: _addCategory,
-                    child: const Text('Add Category'),
+                    child: const Text(
+                      'Add Category',
+                      style: TextStyle(fontSize: 12),
+                    ),
                   ),
                 ],
               ),

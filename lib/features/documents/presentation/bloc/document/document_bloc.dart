@@ -1,10 +1,8 @@
 import 'dart:io';
-
 import 'package:bloc/bloc.dart';
 import 'package:document_manager/features/documents/domain/entities/document.dart';
 import 'package:document_manager/features/documents/domain/repositories/document_repository.dart';
 import 'package:equatable/equatable.dart';
-
 part 'document_event.dart';
 part 'document_state.dart';
 

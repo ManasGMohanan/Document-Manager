@@ -1,9 +1,12 @@
 import 'package:document_manager/core/utils/app_methods/app_methods.dart';
-import 'package:document_manager/core/utils/formatters/formatter.dart';
+import 'package:document_manager/core/utils/constants/colors.dart';
+import 'package:document_manager/core/utils/constants/text_strings.dart';
+import 'package:document_manager/core/utils/formatters/document_grouper.dart';
+import 'package:document_manager/features/documents/domain/entities/document.dart';
 import 'package:document_manager/features/documents/presentation/bloc/document/document_bloc.dart';
 import 'package:document_manager/features/documents/presentation/pages/add_document/add_document_screen.dart';
+import 'package:document_manager/features/documents/presentation/pages/home/widgets/document_grid_itesm.dart';
 import 'package:document_manager/features/documents/presentation/pages/view_edit_document/document_details_screen.dart';
-import 'package:document_manager/features/documents/presentation/widgets/document_list_item.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -14,29 +17,19 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _animation;
-
+class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    _animation = CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    );
-    _animationController.forward();
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _onRefresh() async {
+    context.read<DocumentBloc>().add(LoadDocuments());
   }
 
   @override
@@ -44,22 +37,15 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Document Manager'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              context.read<DocumentBloc>().add(LoadDocuments());
-            },
-          ),
-        ],
       ),
       body: BlocConsumer<DocumentBloc, DocumentState>(
         listener: (context, state) {
           if (ModalRoute.of(context)?.isCurrent ?? false) {
             if (state is DocumentOperationSuccess) {
-              DMAppMethods.showSnackBar(context, state.message, Colors.green);
+              DMAppMethods.showSnackBar(
+                  context, state.message, DMColors.success);
             } else if (state is DocumentError) {
-              DMAppMethods.showSnackBar(context, state.message, Colors.red);
+              DMAppMethods.showSnackBar(context, state.message, DMColors.error);
             }
           }
         },
@@ -110,50 +96,104 @@ class _HomeScreenState extends State<HomeScreen>
                   : [];
 
           if (documents.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.folder_open,
-                    size: 80,
-                    color: Colors.grey,
+            return SizedBox(
+              height: MediaQuery.of(context).size.height,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.folder_open,
+                        size: 80,
+                        color: DMColors.primary,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        DMTexts.noDoc,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Text(
+                          DMTexts.addFirst,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No Documents Yet',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Add your first document by tapping the + button below',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                ),
               ),
             );
           }
 
-          return FadeTransition(
-            opacity: _animation,
+          // Group documents by date
+          final groupedDocuments =
+              DocumentGrouper.groupDocumentsByDate(documents.cast<Document>());
+
+          return RefreshIndicator(
+            onRefresh: _onRefresh,
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: documents.length,
-              itemBuilder: (context, index) {
-                final document = documents[index];
-                return DocumentListItem(
-                  document: document,
-                  isExpired: DMFormatter.isExpired(document.expiryDate),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            DocumentDetailsScreen(documentId: document.id),
+              itemCount: groupedDocuments.length,
+              itemBuilder: (context, sectionIndex) {
+                final sectionTitle =
+                    groupedDocuments.keys.elementAt(sectionIndex);
+                final sectionDocuments =
+                    groupedDocuments.values.elementAt(sectionIndex);
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12, left: 4),
+                      child: Text(
+                        sectionTitle,
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontSize: 14,
+                                  letterSpacing: 0.5,
+                                  color: DMColors.textSecondary,
+                                  fontWeight: FontWeight.bold,
+                                ),
                       ),
-                    );
-                  },
+                    ),
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 0.85,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                      ),
+                      itemCount: sectionDocuments.length,
+                      itemBuilder: (context, index) {
+                        final document = sectionDocuments[index];
+                        final isExpired = document.expiryDate != null &&
+                            DateTime.now().isAfter(document.expiryDate!);
+
+                        return DocumentGridItem(
+                          document: document,
+                          isExpired: isExpired,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DocumentDetailsScreen(
+                                    documentId: document.id),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 );
               },
             ),

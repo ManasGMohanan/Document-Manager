@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:document_manager/core/utils/constants/colors.dart';
 import 'package:flutter/material.dart';
 

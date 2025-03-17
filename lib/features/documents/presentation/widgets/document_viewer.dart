@@ -22,7 +22,10 @@ class DocumentViewer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
+        //changing the title first letter to capital, as it's an appbar showing that.
+        title: Text(
+          title.isNotEmpty ? title[0].toUpperCase() + title.substring(1) : '',
+        ),
       ),
       body: _buildViewer(),
     );

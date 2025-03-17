@@ -1,4 +1,5 @@
 import 'package:document_manager/app.dart';
+import 'package:document_manager/core/utils/helper/category_helper.dart';
 import 'package:document_manager/features/documents/data/models/category_model.dart';
 import 'package:document_manager/features/documents/data/models/document_model.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +14,8 @@ void main() async {
   Hive.registerAdapter(CategoryModelAdapter());
   await Hive.openBox<DocumentModel>('documents');
   await Hive.openBox<CategoryModel>('categories');
+  //default category check---
+  await ensureDefaultCategoryExists();
 
   runApp(const App());
 }

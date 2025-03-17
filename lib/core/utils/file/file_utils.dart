@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:get_thumbnail_video/index.dart';
@@ -15,7 +14,7 @@ import 'package:uuid/uuid.dart';
 class DMFileUtils {
   static const uuid = Uuid();
   static final _thumbnailLock = Lock();
-  static const int _thumbnailSize = 300; // Size of the thumbnail in pixels
+  static const int _thumbnailSize = 300;
 
   static Future<String> saveFile(File file) async {
     final appDir = await getApplicationDocumentsDirectory();
@@ -30,7 +29,7 @@ class DMFileUtils {
       await file.delete();
     }
 
-    // Also delete thumbnail if it exists
+    // delete thumbnail too if exists
     final thumbnailPath = await _getThumbnailPath(filePath);
     final thumbnailFile = File(thumbnailPath);
     if (await thumbnailFile.exists()) {
@@ -112,10 +111,32 @@ class DMFileUtils {
       case '.mp3':
       case '.wav':
       case '.aac':
+      case '.m4a':
         return Colors.orange.shade400;
       default:
         return Colors.grey.shade400;
     }
+  }
+
+  static String getFileSize(String filePath) {
+    try {
+      final file = File(filePath);
+      if (file.existsSync()) {
+        final bytes = file.lengthSync();
+        if (bytes < 1024) {
+          return '$bytes B';
+        } else if (bytes < 1024 * 1024) {
+          return '${(bytes / 1024).toStringAsFixed(1)} KB';
+        } else if (bytes < 1024 * 1024 * 1024) {
+          return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+        } else {
+          return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
+        }
+      }
+    } catch (e) {
+      // check error
+    }
+    return 'Unknown size';
   }
 
   // Get the path where the thumbnail should be stored
@@ -130,7 +151,7 @@ class DMFileUtils {
     return '${thumbnailDir.path}/$fileHash.jpg';
   }
 
-  // Generate a thumbnail for an image file
+  // Generate a thumbnail for an image file used image compress package
   static Future<File?> _generateImageThumbnail(
       String filePath, String thumbnailPath) async {
     try {
@@ -144,12 +165,12 @@ class DMFileUtils {
 
       return result != null ? File(result.path) : null;
     } catch (e) {
-      print('Error generating image thumbnail: $e');
       return null;
     }
   }
 
-  // Generate a thumbnail for a video file
+  // fixed issue
+  // Generate a thumbnail for a video file used get thumbnail video package
   static Future<File?> _generateVideoThumbnail(
       String filePath, String thumbnailPath) async {
     try {
@@ -159,70 +180,59 @@ class DMFileUtils {
         maxWidth: _thumbnailSize,
         quality: 50,
       );
-
-      if (thumbnailBytes != null) {
-        final file = File(thumbnailPath);
-        await file.writeAsBytes(thumbnailBytes);
-        return file;
-      }
-      return null;
+      final file = File(thumbnailPath);
+      await file.writeAsBytes(thumbnailBytes);
+      return file;
     } catch (e) {
-      print('Error generating video thumbnail: $e');
       return null;
     }
   }
 
-  // Generate a thumbnail for a PDF file
+  // thumbnail for a PDF file, used first page render using pdf render package
   static Future<File?> _generatePdfThumbnail(
       String filePath, String thumbnailPath) async {
     try {
       final document = await PdfDocument.openFile(filePath);
-      final page = await document.getPage(1); // Get the first page
+      final page = await document.getPage(1);
 
-      // Get the page dimensions
       final pageWidth = page.width;
       final pageHeight = page.height;
 
-      // Calculate the aspect ratio to maintain proportions
       final aspectRatio = pageWidth / pageHeight;
       int width, height;
 
       if (aspectRatio > 1) {
-        // Landscape orientation
         width = _thumbnailSize;
         height = (_thumbnailSize / aspectRatio).round();
       } else {
-        // Portrait orientation
         height = _thumbnailSize;
         width = (_thumbnailSize * aspectRatio).round();
       }
 
-      // Render the page to an image
       final pageImage = await page.render(
         width: width,
         height: height,
       );
 
-      // Get the image bytes from PdfPageImage
       final image = await pageImage.createImageDetached();
       final bytes = await image.toByteData(format: ImageByteFormat.png);
       final byteList = bytes!.buffer.asUint8List();
 
+      //fixed issue
       final file = File(thumbnailPath);
       await file.writeAsBytes(byteList);
 
-      // Close the document to free resources
+      // Close pdf
       document.dispose();
 
       return file;
     } catch (e) {
-      print('Error generating PDF thumbnail: $e');
       return null;
     }
   }
 
   static Future<File?> getThumbnail(String filePath) async {
-    // Use a lock to prevent multiple thumbnail generations for the same file
+    // Use a lock to prevent multiple thumbnail generations for the same file, with synchronized package
     return _thumbnailLock.synchronized(() async {
       try {
         final thumbnailPath = await _getThumbnailPath(filePath);
@@ -233,7 +243,7 @@ class DMFileUtils {
           return thumbnailFile;
         }
 
-        // Generate thumbnail based on file type
+        // thumbnail based on file type, using mime package
         final extension = path.extension(filePath).toLowerCase();
         final mimeType = lookupMimeType(filePath);
 
@@ -244,11 +254,10 @@ class DMFileUtils {
         } else if (['.mp4', '.mov', '.avi'].contains(extension)) {
           return await _generateVideoThumbnail(filePath, thumbnailPath);
         } else {
-          // For other file types, generate a generic thumbnail
+          // Buggy code
           // return await _generateGenericThumbnail(filePath, thumbnailPath);
         }
       } catch (e) {
-        print('Error in getThumbnail: $e');
         return null;
       }
       return null;

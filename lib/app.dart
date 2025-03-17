@@ -44,9 +44,9 @@ class App extends StatelessWidget {
         ],
         child: MaterialApp(
           title: DMTexts.appName,
-          themeMode: ThemeMode.system,
+          themeMode: ThemeMode.light,
           theme: DMAppTheme.lightTheme,
-          darkTheme: DMAppTheme.darkTheme,
+          // darkTheme: DMAppTheme.darkTheme,
           debugShowCheckedModeBanner: false,
           home: const HomeScreen(),
         ),

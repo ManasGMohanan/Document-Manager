@@ -14,5 +14,5 @@ abstract class CategoryRepository {
     int? colorValue,
     int? iconData,
   });
-  Future<void> deleteCategory(String id);
+  Future<void> deleteCategory(String id); //not implemented
 }

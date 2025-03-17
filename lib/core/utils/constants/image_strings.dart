@@ -1,10 +1,5 @@
-/* -- App Image Strings -- */
-
-/// This class contains all the App Images in String formats.
 class DMImages {
-  // -- App Logos
-  static const String darkAppLogo =
-      "assets/logos/t-store-splash-logo-black.png";
-  static const String lightAppLogo =
-      "assets/logos/t-store-splash-logo-white.png";
+  // -- For ease image strings can be added here
+  static const String appLogo = "assets/images/app-logo.png";
+  static const String musicPlayerIcon = 'assets/images/headphone.png';
 }

@@ -1,7 +1,10 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:document_manager/features/documents/domain/entities/category.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
+//category model, added icon and color
 @HiveType(typeId: 1)
 class CategoryModel extends Category {
   @HiveField(0)
@@ -60,7 +63,6 @@ class CategoryModel extends Category {
   }
 }
 
-// Hive adapter remains the same
 class CategoryModelAdapter extends TypeAdapter<CategoryModel> {
   @override
   final int typeId = 1;

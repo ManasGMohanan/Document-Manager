@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path/path.dart' as path;
 
+//currently not in case any error
 class UnsupportedFileViewer extends StatelessWidget {
   final String filePath;
 
   const UnsupportedFileViewer({
-    Key? key,
+    super.key,
     required this.filePath,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

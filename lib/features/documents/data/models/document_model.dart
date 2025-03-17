@@ -100,7 +100,7 @@ class DocumentModel extends Document {
       fileType: fileType ?? _fileType,
       categoryId: categoryId ?? _categoryId,
       createdAt: createdAt ?? _createdAt,
-      expiryDate: expiryDate ?? _expiryDate,
+      expiryDate: expiryDate, //null issue solved here
     );
   }
 }
